@@ -2,6 +2,63 @@ from pico2d import SDL_KEYDOWN, SDL_KEYUP, SDLK_a, SDLK_LEFT, SDLK_RIGHT, load_i
 import time
 from transitions import Machine
 
+
+class BoyState:
+    moving = False
+
+    def __init__(self, boy):
+        self.boy = boy
+
+    def update(self):
+        pass
+
+
+class RunningState(BoyState):
+    moving = True
+
+    def update(self):
+        self.boy.x = max(50, min(750, self.boy.x + self.boy.face_dir * 5))
+        self.boy.frame = (self.boy.frame + 1) % 8
+
+
+class AutoRunState(RunningState):
+    duration = 5
+
+    def __init__(self, boy):
+        super().__init__(boy)
+        self.start_time = time.monotonic()
+
+    def update(self):
+        if time.monotonic() - self.start_time >= self.duration:
+            self.boy.stop_auto_run()
+            return
+        super().update()
+
+
+class RunState(RunningState):
+    pass
+
+
+class IdleState(BoyState):
+    def update(self):
+        self.boy.frame = (self.boy.frame + 1) % 8
+        if time.monotonic() - self.boy.idle_start_time >= 5:
+            self.boy.sleep()
+
+
+class SleepState(BoyState):
+    def update(self):
+        self.boy.frame = 1
+
+
+STATE_CLASSES = {
+    'AUTO_RUN': AutoRunState,
+    'IDLE': IdleState,
+    'SLEEP': SleepState,
+    'RUN': RunState,
+}
+
+
 class Boy:
     def __init__(self):
         self.x, self.y = 400, 90
@@ -16,6 +73,7 @@ class Boy:
             states=['AUTO_RUN', 'IDLE', 'SLEEP', 'RUN'],
             initial='IDLE',
             auto_transitions=False,
+            after_state_change='sync_state_behavior',
             transitions=[
                 {'trigger': 'sleep', 'source': 'IDLE', 'dest': 'SLEEP'},
                 {'trigger': 'start_running', 'source': ['IDLE', 'SLEEP'], 'dest': 'RUN'},
@@ -23,7 +81,6 @@ class Boy:
                     'trigger': 'start_auto_run',
                     'source': ['IDLE', 'SLEEP', 'RUN'],
                     'dest': 'AUTO_RUN',
-                    'after': 'reset_auto_run_timer',
                 },
                 {
                     'trigger': 'stop_auto_run',
@@ -39,12 +96,13 @@ class Boy:
                 },
             ],
         )
+        self.sync_state_behavior()
 
     def reset_idle_timer(self):
         self.idle_start_time = time.monotonic()
 
-    def reset_auto_run_timer(self):
-        self.auto_run_start_time = time.monotonic()
+    def sync_state_behavior(self):
+        self.state_behavior = STATE_CLASSES[self.state](self)
 
     def handle_event(self, event):
         if event.type == SDL_KEYDOWN and event.key == SDLK_a:
@@ -77,24 +135,10 @@ class Boy:
                     self.stop_running()
 
     def update(self):
-        if self.state == 'AUTO_RUN':
-            if time.monotonic() - self.auto_run_start_time >= 5:
-                self.stop_auto_run()
-                return
-            self.x = max(50, min(750, self.x + self.face_dir * 5))
-            self.frame = (self.frame + 1) % 8
-        elif self.state == 'RUN':
-            self.x = max(50, min(750, self.x + self.face_dir * 5))
-            self.frame = (self.frame + 1) % 8
-        elif self.state == 'IDLE':
-            self.frame = (self.frame + 1) % 8
-            if time.monotonic() - self.idle_start_time >= 5:
-                self.sleep()
-        elif self.state == 'SLEEP':
-            self.frame = 1
+        self.state_behavior.update()
 
     def draw(self):
-        if self.state in ('AUTO_RUN', 'RUN'):
+        if self.state_behavior.moving:
             row = 100 if self.face_dir == 1 else 0
         else:
             row = 300 if self.face_dir == 1 else 200
