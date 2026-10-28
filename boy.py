@@ -21,9 +21,15 @@ class RunningState(BoyState):
         self.boy.speed = Boy.BASE_SPEED
 
     def update(self):
-        self.boy.x = max(
-            50, min(750, self.boy.x + self.boy.face_dir * self.boy.speed)
-        )
+        next_x = self.boy.x + self.boy.face_dir * self.boy.speed
+        if next_x <= Boy.MIN_X:
+            self.boy.x = Boy.MIN_X
+            self.boy.face_dir = 1
+        elif next_x >= Boy.MAX_X:
+            self.boy.x = Boy.MAX_X
+            self.boy.face_dir = -1
+        else:
+            self.boy.x = next_x
         self.boy.frame = (self.boy.frame + 1) % 8
 
 
@@ -81,6 +87,8 @@ STATE_CLASSES = {
 
 
 class Boy:
+    MIN_X = 50
+    MAX_X = 750
     BASE_SPEED = 5
     MAX_AUTO_RUN_SPEED = 10
     BASE_SIZE = 100
