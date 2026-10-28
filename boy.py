@@ -29,6 +29,7 @@ class RunningState(BoyState):
 
 class AutoRunState(RunningState):
     duration = 5
+    size_growth_duration = 4
 
     def __init__(self, boy):
         super().__init__(boy)
@@ -43,6 +44,10 @@ class AutoRunState(RunningState):
         self.boy.speed = Boy.BASE_SPEED + (
             Boy.MAX_AUTO_RUN_SPEED - Boy.BASE_SPEED
         ) * progress
+        size_progress = min(elapsed / self.size_growth_duration, 1)
+        self.boy.size = Boy.BASE_SIZE + (
+            Boy.MAX_AUTO_RUN_SIZE - Boy.BASE_SIZE
+        ) * size_progress
         super().update()
 
 
@@ -54,6 +59,7 @@ class IdleState(BoyState):
     def __init__(self, boy):
         super().__init__(boy)
         self.boy.speed = Boy.BASE_SPEED
+        self.boy.size = Boy.BASE_SIZE
 
     def update(self):
         self.boy.frame = (self.boy.frame + 1) % 8
@@ -77,10 +83,13 @@ STATE_CLASSES = {
 class Boy:
     BASE_SPEED = 5
     MAX_AUTO_RUN_SPEED = 10
+    BASE_SIZE = 100
+    MAX_AUTO_RUN_SIZE = 150
 
     def __init__(self):
         self.x, self.y = 400, 90
         self.speed = self.BASE_SPEED
+        self.size = self.BASE_SIZE
         self.frame = 0
         self.face_dir = 1
         self.pressed_directions = []
@@ -161,4 +170,6 @@ class Boy:
             row = 100 if self.face_dir == 1 else 0
         else:
             row = 300 if self.face_dir == 1 else 200
-        self.image.clip_draw(self.frame * 100, row, 100, 100, self.x, self.y)
+        self.image.clip_draw(
+            self.frame * 100, row, 100, 100, self.x, self.y, self.size, self.size
+        )
