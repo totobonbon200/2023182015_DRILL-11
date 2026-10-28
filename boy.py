@@ -58,7 +58,9 @@ class AutoRunState(RunningState):
 
 
 class RunState(RunningState):
-    pass
+    def __init__(self, boy):
+        super().__init__(boy)
+        self.boy.size = Boy.BASE_SIZE
 
 
 class IdleState(BoyState):
@@ -112,7 +114,11 @@ class Boy:
             after_state_change='sync_state_behavior',
             transitions=[
                 {'trigger': 'sleep', 'source': 'IDLE', 'dest': 'SLEEP'},
-                {'trigger': 'start_running', 'source': ['IDLE', 'SLEEP'], 'dest': 'RUN'},
+                {
+                    'trigger': 'start_running',
+                    'source': ['IDLE', 'SLEEP', 'AUTO_RUN'],
+                    'dest': 'RUN',
+                },
                 {
                     'trigger': 'start_auto_run',
                     'source': ['IDLE', 'SLEEP', 'RUN'],
@@ -159,7 +165,7 @@ class Boy:
             if event.key not in self.pressed_directions:
                 self.pressed_directions.append(event.key)
             self.face_dir = 1 if event.key == SDLK_RIGHT else -1
-            if self.state not in ('RUN', 'AUTO_RUN'):
+            if self.state != 'RUN':
                 self.start_running()
         elif event.type == SDL_KEYUP and event.key in self.pressed_directions:
             self.pressed_directions.remove(event.key)
