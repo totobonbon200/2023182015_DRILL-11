@@ -23,6 +23,7 @@ class Boy:
                     'trigger': 'start_auto_run',
                     'source': ['IDLE', 'SLEEP', 'RUN'],
                     'dest': 'AUTO_RUN',
+                    'after': 'reset_auto_run_timer',
                 },
                 {
                     'trigger': 'stop_auto_run',
@@ -41,6 +42,9 @@ class Boy:
 
     def reset_idle_timer(self):
         self.idle_start_time = time.monotonic()
+
+    def reset_auto_run_timer(self):
+        self.auto_run_start_time = time.monotonic()
 
     def handle_event(self, event):
         if event.type == SDL_KEYDOWN and event.key == SDLK_a:
@@ -74,6 +78,9 @@ class Boy:
 
     def update(self):
         if self.state == 'AUTO_RUN':
+            if time.monotonic() - self.auto_run_start_time >= 5:
+                self.stop_auto_run()
+                return
             self.x = max(50, min(750, self.x + self.face_dir * 5))
             self.frame = (self.frame + 1) % 8
         elif self.state == 'RUN':
