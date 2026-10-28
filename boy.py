@@ -16,8 +16,14 @@ class BoyState:
 class RunningState(BoyState):
     moving = True
 
+    def __init__(self, boy):
+        super().__init__(boy)
+        self.boy.speed = Boy.BASE_SPEED
+
     def update(self):
-        self.boy.x = max(50, min(750, self.boy.x + self.boy.face_dir * 5))
+        self.boy.x = max(
+            50, min(750, self.boy.x + self.boy.face_dir * self.boy.speed)
+        )
         self.boy.frame = (self.boy.frame + 1) % 8
 
 
@@ -29,9 +35,14 @@ class AutoRunState(RunningState):
         self.start_time = time.monotonic()
 
     def update(self):
-        if time.monotonic() - self.start_time >= self.duration:
+        elapsed = time.monotonic() - self.start_time
+        if elapsed >= self.duration:
             self.boy.stop_auto_run()
             return
+        progress = elapsed / self.duration
+        self.boy.speed = Boy.BASE_SPEED + (
+            Boy.MAX_AUTO_RUN_SPEED - Boy.BASE_SPEED
+        ) * progress
         super().update()
 
 
@@ -40,6 +51,10 @@ class RunState(RunningState):
 
 
 class IdleState(BoyState):
+    def __init__(self, boy):
+        super().__init__(boy)
+        self.boy.speed = Boy.BASE_SPEED
+
     def update(self):
         self.boy.frame = (self.boy.frame + 1) % 8
         if time.monotonic() - self.boy.idle_start_time >= 5:
@@ -60,8 +75,12 @@ STATE_CLASSES = {
 
 
 class Boy:
+    BASE_SPEED = 5
+    MAX_AUTO_RUN_SPEED = 10
+
     def __init__(self):
         self.x, self.y = 400, 90
+        self.speed = self.BASE_SPEED
         self.frame = 0
         self.face_dir = 1
         self.pressed_directions = []
